@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  auth:
+    build: ./auth
+    ports:
+      - "${AUTH_PORT}:${AUTH_PORT}"
+    environment:
+      - POSTGRES_URL=${POSTGRES_URL}
+      - AUTH_PORT=${AUTH_PORT}
+    networks:
+      - go_microservices
+
+  broker:
+    build: ./broker
+    ports:
+      - "${BROKER_PORT}:${BROKER_PORT}"
+    environment:
+      - BROKER_PORT=${BROKER_PORT}
+    networks:
+      - go_microservices
+  # mail:
+  #   build: ./cmd/api/mail
+  #   ports:
+  #     - "${MAIL_PORT}:${MAIL_PORT}"
+  #   networks:
+  #     - go_microservices
+
+  # listener:
+  #   build: ./cmd/api/listener
+  #   ports:
+  #     - "${LISTENER_PORT}:${LISTENER_PORT}"
+  #   environment:
+  #     - RABBITMQ_URL=${RABBITMQ_URL}
+  #   networks:
+  #     - go_microservices
+  #   depends_on:
+  #     - rabbitmq
+
+  # rabbitmq:
+  #   image: "rabbitmq:management"
+  #   ports:
+  #     - "15672:15672" # Management UI
+  #     - "5672:5672"   # AMQP protocol
+  #   networks:
+  #     - go_microservices
+
+networks:
+  go_microservices:
+    driver: bridge
