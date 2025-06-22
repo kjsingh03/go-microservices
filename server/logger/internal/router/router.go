@@ -2,34 +2,52 @@ package router
 
 import (
 	"logger/internal/handler"
+	"logger/internal/middleware"
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
 )
 
-func Routes() http.Handler {
+type App struct {
+	logHandler *handlers.LogHandler
+}
+
+func NewApp(logHandler *handlers.LogHandler) *App {
+	return &App{
+		logHandler: logHandler,
+	}
+}
+
+func (a *App) Routes() http.Handler {
 	router := mux.NewRouter()
 
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"*"},
-	})
+	// Global middleware
+	router.Use(middleware.CORS())
+	router.Use(middleware.Logging())
+	router.Use(middleware.Recovery())
 
-	// Health check route
-	router.HandleFunc("/", handler.Home).Methods("GET")
+	// API v1 routes
+	v1 := router.PathPrefix("/api/v1").Subrouter()
+	a.setupV1Routes(v1)
 
-	// Log management routes
-	router.HandleFunc("/logs", handler.GetAllLogs).Methods("GET")
-	router.HandleFunc("/logs", handler.CreateLog).Methods("POST")
-	router.HandleFunc("/logs/{id}", handler.GetLogByID).Methods("GET")
-	router.HandleFunc("/logs/{id}", handler.UpdateLog).Methods("PUT")
-	router.HandleFunc("/logs/{id}", handler.DeleteLog).Methods("DELETE")
+	// Health check
+	router.HandleFunc("/health", a.logHandler.Health).Methods("GET")
+	router.HandleFunc("/", a.logHandler.Home).Methods("GET")
+
+	return router
+}
+
+func (a *App) setupV1Routes(router *mux.Router) {
+	// Log routes
+	logs := router.PathPrefix("/logs").Subrouter()
+	logs.HandleFunc("", a.logHandler.GetAllLogs).Methods("GET")
+	logs.HandleFunc("", a.logHandler.CreateLog).Methods("POST")
+	logs.HandleFunc("/{id}", a.logHandler.GetLogByID).Methods("GET")
+	logs.HandleFunc("/{id}", a.logHandler.UpdateLog).Methods("PUT")
+	logs.HandleFunc("/{id}", a.logHandler.DeleteLog).Methods("DELETE")
 	
-	// Additional utility routes
-	router.HandleFunc("/logs/stats", handler.GetLogsStats).Methods("GET")
-	router.HandleFunc("/logs/drop", handler.DropAllLogs).Methods("DELETE")
-
-	return c.Handler(router)
+	// Utility routes
+	logs.HandleFunc("/stats", a.logHandler.GetLogsStats).Methods("GET")
+	logs.HandleFunc("/drop", a.logHandler.DropAllLogs).Methods("DELETE").
+		Queries("confirm", "true") // Require query parameter for safety
 }

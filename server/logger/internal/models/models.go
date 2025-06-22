@@ -15,10 +15,10 @@ import (
 var AppModels Models
 
 type Models struct {
-	LogEntry LogEntryModel
+	Log LogEntryModel
 }
 
-type LogEntry struct {
+type Log struct {
 	ID        bson.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 	Name      string        `bson:"name" json:"name"`
 	Data      string        `bson:"data" json:"data"`
@@ -32,13 +32,13 @@ type LogEntryModel struct {
 
 func InitModels(client *mongo.Client) {
 	AppModels = Models{
-		LogEntry: LogEntryModel{
+		Log: LogEntryModel{
 			Collection: client.Database("logs").Collection("logs"),
 		},
 	}
 }
 
-func (m *LogEntryModel) Insert(entry LogEntry) error {
+func (m *LogEntryModel) Insert(entry Log) error {
 	entry.CreatedAt = time.Now()
 	entry.UpdatedAt = time.Now()
 
@@ -50,7 +50,7 @@ func (m *LogEntryModel) Insert(entry LogEntry) error {
 	return nil
 }
 
-func (m *LogEntryModel) All() ([]*LogEntry, error) {
+func (m *LogEntryModel) All() ([]*Log, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -62,9 +62,9 @@ func (m *LogEntryModel) All() ([]*LogEntry, error) {
 	}
 	defer cursor.Close(ctx)
 
-	var logs []*LogEntry
+	var logs []*Log
 	for cursor.Next(ctx) {
-		var logEntry LogEntry
+		var logEntry Log
 		if err := cursor.Decode(&logEntry); err != nil {
 			log.Println("Decode error:", err)
 			return nil, err
@@ -74,7 +74,7 @@ func (m *LogEntryModel) All() ([]*LogEntry, error) {
 	return logs, nil
 }
 
-func (m *LogEntryModel) GetOne(id string) (*LogEntry, error) {
+func (m *LogEntryModel) GetOne(id string) (*Log, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -83,7 +83,7 @@ func (m *LogEntryModel) GetOne(id string) (*LogEntry, error) {
 		return nil, err
 	}
 
-	var entry LogEntry
+	var entry Log
 	err = m.Collection.FindOne(ctx, bson.M{"_id": docID}).Decode(&entry)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (m *LogEntryModel) DropCollection() error {
 	return m.Collection.Drop(ctx)
 }
 
-func (m *LogEntryModel) Update(entry *LogEntry) (*mongo.UpdateResult, error) {
+func (m *LogEntryModel) Update(entry *Log) (*mongo.UpdateResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 

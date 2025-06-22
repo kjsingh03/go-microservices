@@ -1,35 +1,62 @@
-package handler
+// internal/handler/handler.go
+package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"logger/internal/helpers"
-	"logger/internal/models"
 	"logger/types"
 	"net/http"
-	"strings"
+	"context"
+	"time"
 
 	"github.com/gorilla/mux"
-	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-// Home handler - welcome message
-func Home(w http.ResponseWriter, r *http.Request) {
-	payload := types.JsonResponse{
-		Success: true,
-		Message: "Welcome to Logger Service",
-	}
+type LogHandler struct {
+	logService types.LogServiceInterface
+}
 
-	err := helpers.WriteJSON(w, http.StatusOK, payload)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println(err)
+func NewLogHandler(logService types.LogServiceInterface) *LogHandler {
+	return &LogHandler{
+		logService: logService,
 	}
 }
 
-// GetAllLogs - Retrieve all log entries
-func GetAllLogs(w http.ResponseWriter, r *http.Request) {
-	logs, err := models.AppModels.LogEntry.All()
+func (h *LogHandler) Health(w http.ResponseWriter, r *http.Request) {
+	payload := types.JsonResponse{
+		Success: true,
+		Message: "Service is healthy",
+		Data: map[string]interface{}{
+			"status":    "ok",
+			"timestamp": time.Now().UTC(),
+		},
+	}
+
+	helpers.WriteJSON(w, http.StatusOK, payload)
+}
+
+func (h *LogHandler) Home(w http.ResponseWriter, r *http.Request) {
+	payload := types.JsonResponse{
+		Success: true,
+		Message: "Welcome to Logger Service API v1",
+		Data: map[string]interface{}{
+			"version": "1.0.0",
+			"endpoints": map[string]string{
+				"health": "/health",
+				"logs":   "/api/v1/logs",
+				"stats":  "/api/v1/logs/stats",
+			},
+		},
+	}
+
+	helpers.WriteJSON(w, http.StatusOK, payload)
+}
+
+func (h *LogHandler) GetAllLogs(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	logs, err := h.logService.GetAllLogs(ctx)
 	if err != nil {
 		payload := types.JsonResponse{
 			Success: false,
@@ -37,7 +64,6 @@ func GetAllLogs(w http.ResponseWriter, r *http.Request) {
 			Error:   err.Error(),
 		}
 		helpers.WriteJSON(w, http.StatusInternalServerError, payload)
-		log.Printf("Error fetching logs: %v", err)
 		return
 	}
 
@@ -47,35 +73,30 @@ func GetAllLogs(w http.ResponseWriter, r *http.Request) {
 		Data:    logs,
 	}
 
-	err = helpers.WriteJSON(w, http.StatusOK, payload)
-	if err != nil {
-		log.Printf("Error writing JSON response: %v", err)
-	}
+	helpers.WriteJSON(w, http.StatusOK, payload)
 }
 
-// GetLogByID - Retrieve a single log entry by ID
-func GetLogByID(w http.ResponseWriter, r *http.Request) {
+func (h *LogHandler) GetLogByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	if strings.TrimSpace(id) == "" {
-		payload := types.JsonResponse{
-			Success: false,
-			Message: "Log ID is required",
-		}
-		helpers.WriteJSON(w, http.StatusBadRequest, payload)
-		return
-	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
 
-	logEntry, err := models.AppModels.LogEntry.GetOne(id)
+	logEntry, err := h.logService.GetLogByID(ctx, id)
 	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "log not found" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "log ID is required" {
+			statusCode = http.StatusBadRequest
+		}
+
 		payload := types.JsonResponse{
 			Success: false,
-			Message: "Log not found",
-			Error:   err.Error(),
+			Message: err.Error(),
 		}
-		helpers.WriteJSON(w, http.StatusNotFound, payload)
-		log.Printf("Error fetching log with ID %s: %v", id, err)
+		helpers.WriteJSON(w, statusCode, payload)
 		return
 	}
 
@@ -85,20 +106,13 @@ func GetLogByID(w http.ResponseWriter, r *http.Request) {
 		Data:    logEntry,
 	}
 
-	err = helpers.WriteJSON(w, http.StatusOK, payload)
-	if err != nil {
-		log.Printf("Error writing JSON response: %v", err)
-	}
+	helpers.WriteJSON(w, http.StatusOK, payload)
 }
 
-// CreateLog - Create a new log entry
-func CreateLog(w http.ResponseWriter, r *http.Request) {
-	var requestBody struct {
-		Name string `json:"name"`
-		Data string `json:"data"`
-	}
+func (h *LogHandler) CreateLog(w http.ResponseWriter, r *http.Request) {
+	var req types.CreateLogRequest
 
-	err := json.NewDecoder(r.Body).Decode(&requestBody)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		payload := types.JsonResponse{
 			Success: false,
@@ -106,95 +120,42 @@ func CreateLog(w http.ResponseWriter, r *http.Request) {
 			Error:   err.Error(),
 		}
 		helpers.WriteJSON(w, http.StatusBadRequest, payload)
-		log.Printf("Error decoding JSON: %v", err)
 		return
 	}
 
-	// Validate required fields
-	if strings.TrimSpace(requestBody.Name) == "" {
-		payload := types.JsonResponse{
-			Success: false,
-			Message: "Name field is required",
-		}
-		helpers.WriteJSON(w, http.StatusBadRequest, payload)
-		return
-	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
 
-	if strings.TrimSpace(requestBody.Data) == "" {
-		payload := types.JsonResponse{
-			Success: false,
-			Message: "Data field is required",
-		}
-		helpers.WriteJSON(w, http.StatusBadRequest, payload)
-		return
-	}
-
-	// Create new log entry
-	newLog := models.LogEntry{
-		Name: strings.TrimSpace(requestBody.Name),
-		Data: strings.TrimSpace(requestBody.Data),
-	}
-
-	err = models.AppModels.LogEntry.Insert(newLog)
+	createdLog, err := h.logService.CreateLog(ctx, req)
 	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "name field is required" || err.Error() == "data field is required" {
+			statusCode = http.StatusBadRequest
+		}
+
 		payload := types.JsonResponse{
 			Success: false,
-			Message: "Failed to create log entry",
-			Error:   err.Error(),
+			Message: err.Error(),
 		}
-		helpers.WriteJSON(w, http.StatusInternalServerError, payload)
-		log.Printf("Error creating log: %v", err)
+		helpers.WriteJSON(w, statusCode, payload)
 		return
 	}
 
 	payload := types.JsonResponse{
 		Success: true,
 		Message: "Log entry created successfully",
-		Data: map[string]interface{}{
-			"name": newLog.Name,
-			"data": newLog.Data,
-		},
+		Data:    createdLog,
 	}
 
-	err = helpers.WriteJSON(w, http.StatusCreated, payload)
-	if err != nil {
-		log.Printf("Error writing JSON response: %v", err)
-	}
+	helpers.WriteJSON(w, http.StatusCreated, payload)
 }
 
-// UpdateLog - Update an existing log entry
-func UpdateLog(w http.ResponseWriter, r *http.Request) {
+func (h *LogHandler) UpdateLog(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	if strings.TrimSpace(id) == "" {
-		payload := types.JsonResponse{
-			Success: false,
-			Message: "Log ID is required",
-		}
-		helpers.WriteJSON(w, http.StatusBadRequest, payload)
-		return
-	}
-
-	// First, check if the log exists
-	existingLog, err := models.AppModels.LogEntry.GetOne(id)
-	if err != nil {
-		payload := types.JsonResponse{
-			Success: false,
-			Message: "Log not found",
-			Error:   err.Error(),
-		}
-		helpers.WriteJSON(w, http.StatusNotFound, payload)
-		log.Printf("Error finding log with ID %s: %v", id, err)
-		return
-	}
-
-	var requestBody struct {
-		Name string `json:"name"`
-		Data string `json:"data"`
-	}
-
-	err = json.NewDecoder(r.Body).Decode(&requestBody)
+	var req types.UpdateLogRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		payload := types.JsonResponse{
 			Success: false,
@@ -202,133 +163,91 @@ func UpdateLog(w http.ResponseWriter, r *http.Request) {
 			Error:   err.Error(),
 		}
 		helpers.WriteJSON(w, http.StatusBadRequest, payload)
-		log.Printf("Error decoding JSON: %v", err)
 		return
 	}
 
-	// Update fields if provided
-	if strings.TrimSpace(requestBody.Name) != "" {
-		existingLog.Name = strings.TrimSpace(requestBody.Name)
-	}
-	if strings.TrimSpace(requestBody.Data) != "" {
-		existingLog.Data = strings.TrimSpace(requestBody.Data)
-	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
 
-	result, err := models.AppModels.LogEntry.Update(existingLog)
+	updatedLog, err := h.logService.UpdateLog(ctx, id, req)
 	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "log not found" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "log ID is required" {
+			statusCode = http.StatusBadRequest
+		}
+
 		payload := types.JsonResponse{
 			Success: false,
-			Message: "Failed to update log entry",
-			Error:   err.Error(),
+			Message: err.Error(),
 		}
-		helpers.WriteJSON(w, http.StatusInternalServerError, payload)
-		log.Printf("Error updating log: %v", err)
+		helpers.WriteJSON(w, statusCode, payload)
 		return
 	}
 
 	payload := types.JsonResponse{
 		Success: true,
 		Message: "Log entry updated successfully",
-		Data: map[string]interface{}{
-			"matched_count":  result.MatchedCount,
-			"modified_count": result.ModifiedCount,
-			"updated_log":    existingLog,
-		},
+		Data:    updatedLog,
 	}
 
-	err = helpers.WriteJSON(w, http.StatusOK, payload)
-	if err != nil {
-		log.Printf("Error writing JSON response: %v", err)
-	}
+	helpers.WriteJSON(w, http.StatusOK, payload)
 }
 
-// DeleteLog - Delete a log entry by ID
-func DeleteLog(w http.ResponseWriter, r *http.Request) {
+func (h *LogHandler) DeleteLog(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	if strings.TrimSpace(id) == "" {
-		payload := types.JsonResponse{
-			Success: false,
-			Message: "Log ID is required",
-		}
-		helpers.WriteJSON(w, http.StatusBadRequest, payload)
-		return
-	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
 
-	// Validate ObjectID format
-	objectID, err := bson.ObjectIDFromHex(id)
+	err := h.logService.DeleteLog(ctx, id)
 	if err != nil {
-		payload := types.JsonResponse{
-			Success: false,
-			Message: "Invalid log ID format",
-			Error:   err.Error(),
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "log not found" {
+			statusCode = http.StatusNotFound
+		} else if err.Error() == "log ID is required" {
+			statusCode = http.StatusBadRequest
 		}
-		helpers.WriteJSON(w, http.StatusBadRequest, payload)
-		return
-	}
 
-	// Check if log exists before deleting
-	_, err = models.AppModels.LogEntry.GetOne(id)
-	if err != nil {
 		payload := types.JsonResponse{
 			Success: false,
-			Message: "Log not found",
-			Error:   err.Error(),
+			Message: err.Error(),
 		}
-		helpers.WriteJSON(w, http.StatusNotFound, payload)
-		return
-	}
-
-	// Delete the log entry
-	result, err := models.AppModels.LogEntry.Delete(objectID)
-	if err != nil {
-		payload := types.JsonResponse{
-			Success: false,
-			Message: "Failed to delete log entry",
-			Error:   err.Error(),
-		}
-		helpers.WriteJSON(w, http.StatusInternalServerError, payload)
-		log.Printf("Error deleting log: %v", err)
+		helpers.WriteJSON(w, statusCode, payload)
 		return
 	}
 
 	payload := types.JsonResponse{
 		Success: true,
 		Message: "Log entry deleted successfully",
-		Data: map[string]interface{}{
-			"deleted_count": result.DeletedCount,
-		},
 	}
 
-	err = helpers.WriteJSON(w, http.StatusOK, payload)
-	if err != nil {
-		log.Printf("Error writing JSON response: %v", err)
-	}
+	helpers.WriteJSON(w, http.StatusOK, payload)
 }
 
-// DropAllLogs - Drop the entire logs collection (use with caution)
-func DropAllLogs(w http.ResponseWriter, r *http.Request) {
-	// Add confirmation header for safety
-	confirmation := r.Header.Get("X-Confirm-Drop")
-	if confirmation != "yes" {
+func (h *LogHandler) DropAllLogs(w http.ResponseWriter, r *http.Request) {
+	// Check for confirmation query parameter
+	if r.URL.Query().Get("confirm") != "true" {
 		payload := types.JsonResponse{
 			Success: false,
-			Message: "This operation requires confirmation. Add header 'X-Confirm-Drop: yes'",
+			Message: "This operation requires confirmation. Add query parameter 'confirm=true'",
 		}
 		helpers.WriteJSON(w, http.StatusBadRequest, payload)
 		return
 	}
 
-	err := models.AppModels.LogEntry.DropCollection()
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	err := h.logService.DropAllLogs(ctx)
 	if err != nil {
 		payload := types.JsonResponse{
 			Success: false,
-			Message: "Failed to drop logs collection",
-			Error:   err.Error(),
+			Message: err.Error(),
 		}
 		helpers.WriteJSON(w, http.StatusInternalServerError, payload)
-		log.Printf("Error dropping collection: %v", err)
 		return
 	}
 
@@ -337,33 +256,21 @@ func DropAllLogs(w http.ResponseWriter, r *http.Request) {
 		Message: "All logs have been deleted successfully",
 	}
 
-	err = helpers.WriteJSON(w, http.StatusOK, payload)
-	if err != nil {
-		log.Printf("Error writing JSON response: %v", err)
-	}
+	helpers.WriteJSON(w, http.StatusOK, payload)
 }
 
-// GetLogsStats - Get statistics about logs
-func GetLogsStats(w http.ResponseWriter, r *http.Request) {
-	logs, err := models.AppModels.LogEntry.All()
+func (h *LogHandler) GetLogsStats(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	stats, err := h.logService.GetLogStats(ctx)
 	if err != nil {
 		payload := types.JsonResponse{
 			Success: false,
-			Message: "Failed to fetch logs for statistics",
-			Error:   err.Error(),
+			Message: err.Error(),
 		}
 		helpers.WriteJSON(w, http.StatusInternalServerError, payload)
 		return
-	}
-
-	stats := map[string]interface{}{
-		"total_logs": len(logs),
-		"timestamp":  "Generated statistics",
-	}
-
-	if len(logs) > 0 {
-		stats["oldest_log"] = logs[len(logs)-1].CreatedAt
-		stats["newest_log"] = logs[0].CreatedAt
 	}
 
 	payload := types.JsonResponse{
@@ -372,8 +279,5 @@ func GetLogsStats(w http.ResponseWriter, r *http.Request) {
 		Data:    stats,
 	}
 
-	err = helpers.WriteJSON(w, http.StatusOK, payload)
-	if err != nil {
-		log.Printf("Error writing JSON response: %v", err)
-	}
+	helpers.WriteJSON(w, http.StatusOK, payload)
 }
