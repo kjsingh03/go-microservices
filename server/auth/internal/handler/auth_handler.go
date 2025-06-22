@@ -28,7 +28,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		Password:  signUpPayload.Password,
 		FirstName: signUpPayload.FirstName,
 		LastName:  signUpPayload.LastName,
-		Active:    1,
+		Active:    true,
 	}
 
 	id, err := newUser.Insert(newUser)
@@ -61,6 +61,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	
 	// Get user by email
 	user, err := u.GetByEmail(payload.Email)
+
+	log.Println(user)
 	if err != nil {
 		utils.ErrorJSON(w, err, http.StatusUnauthorized)
 		return

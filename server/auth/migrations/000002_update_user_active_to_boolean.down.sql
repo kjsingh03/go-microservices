@@ -1,0 +1,6 @@
+ALTER TABLE users
+ALTER COLUMN user_active TYPE INTEGER
+USING CASE 
+    WHEN user_active THEN 1
+    ELSE 0
+END;
