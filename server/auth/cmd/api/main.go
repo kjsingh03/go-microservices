@@ -27,7 +27,7 @@ func main() {
 
 	model.SetDB(dbpool)
 
-	log.Printf("Server is starting at: http://localhost:%s", AUTH_PORT)
+	log.Printf("Auth Service starting at: http://localhost:%s", AUTH_PORT)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", AUTH_PORT),

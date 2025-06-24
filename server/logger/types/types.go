@@ -1,4 +1,3 @@
-// types/log.go
 package types
 
 import (
@@ -37,7 +36,6 @@ type UpdateLogRequest struct {
 	Data interface{} `json:"data,omitempty"`
 }
 
-// Custom BSON marshaling to handle ObjectID conversion
 func (l *Log) MarshalBSON() ([]byte, error) {
 	type Alias Log
 	temp := &struct {
@@ -58,7 +56,6 @@ func (l *Log) MarshalBSON() ([]byte, error) {
 	return bson.Marshal(temp)
 }
 
-// Custom BSON unmarshaling to handle ObjectID conversion
 func (l *Log) UnmarshalBSON(data []byte) error {
 	type Alias Log
 	temp := &struct {

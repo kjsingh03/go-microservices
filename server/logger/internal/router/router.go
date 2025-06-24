@@ -21,16 +21,13 @@ func NewApp(logHandler *handlers.LogHandler) *App {
 func (a *App) Routes() http.Handler {
 	router := mux.NewRouter()
 
-	// Global middleware
 	router.Use(middleware.CORS())
 	router.Use(middleware.Logging())
 	router.Use(middleware.Recovery())
 
-	// API v1 routes
 	v1 := router.PathPrefix("/api/v1").Subrouter()
 	a.setupV1Routes(v1)
 
-	// Health check
 	router.HandleFunc("/health", a.logHandler.Health).Methods("GET")
 	router.HandleFunc("/", a.logHandler.Home).Methods("GET")
 
@@ -38,7 +35,6 @@ func (a *App) Routes() http.Handler {
 }
 
 func (a *App) setupV1Routes(router *mux.Router) {
-	// Log routes
 	logs := router.PathPrefix("/logs").Subrouter()
 	logs.HandleFunc("", a.logHandler.GetAllLogs).Methods("GET")
 	logs.HandleFunc("", a.logHandler.CreateLog).Methods("POST")
@@ -46,8 +42,7 @@ func (a *App) setupV1Routes(router *mux.Router) {
 	logs.HandleFunc("/{id}", a.logHandler.UpdateLog).Methods("PUT")
 	logs.HandleFunc("/{id}", a.logHandler.DeleteLog).Methods("DELETE")
 	
-	// Utility routes
 	logs.HandleFunc("/stats", a.logHandler.GetLogsStats).Methods("GET")
 	logs.HandleFunc("/drop", a.logHandler.DropAllLogs).Methods("DELETE").
-		Queries("confirm", "true") // Require query parameter for safety
+		Queries("confirm", "true") 
 }

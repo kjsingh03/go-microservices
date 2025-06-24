@@ -1,4 +1,3 @@
-// models/models.go
 package models
 
 import (
@@ -11,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// Global models instance
 var AppModels Models
 
 type Models struct {

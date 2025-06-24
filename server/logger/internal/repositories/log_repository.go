@@ -1,4 +1,3 @@
-// internal/repositories/log_repository.go
 package repositories
 
 import (
@@ -11,12 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// logRepository implements LogRepository interface
 type logRepository struct {
 	collection *mongo.Collection
 }
 
-// NewLogRepository creates a new log repository instance
 func NewLogRepository(db *mongo.Database) types.LogRepositoryInterface {
 	return &logRepository{
 		collection: db.Collection("logs"),
@@ -24,7 +21,6 @@ func NewLogRepository(db *mongo.Database) types.LogRepositoryInterface {
 }
 
 func (r *logRepository) Create(ctx context.Context, log *types.Log) error {
-	// Set timestamps
 	now := time.Now().UTC()
 	log.CreatedAt = now
 	log.UpdatedAt = now
@@ -34,7 +30,6 @@ func (r *logRepository) Create(ctx context.Context, log *types.Log) error {
 		return err
 	}
 	
-	// Set the ID from MongoDB's generated ObjectID
 	if oid, ok := result.InsertedID.(bson.ObjectID); ok {
 		log.ID = oid.Hex()
 	}
@@ -43,7 +38,6 @@ func (r *logRepository) Create(ctx context.Context, log *types.Log) error {
 }
 
 func (r *logRepository) FindAll(ctx context.Context) ([]types.Log, error) {
-	// Sort by created_at in descending order (newest first)
 	opts := options.Find().SetSort(bson.D{{"created_at", -1}})
 	
 	cursor, err := r.collection.Find(ctx, bson.D{}, opts)
@@ -74,12 +68,11 @@ func (r *logRepository) FindByID(ctx context.Context, id string) (*types.Log, er
 	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&log)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, nil // Return nil when not found
+			return nil, nil 
 		}
 		return nil, err
 	}
 
-	// Set the ID field from the ObjectID
 	log.ID = objectID.Hex()
 	return &log, nil
 }
@@ -90,7 +83,6 @@ func (r *logRepository) Update(ctx context.Context, id string, log *types.Log) e
 		return err
 	}
 
-	// Update timestamp
 	log.UpdatedAt = time.Now().UTC()
 
 	filter := bson.M{"_id": objectID}

@@ -1,4 +1,3 @@
-// internal/config/config.go
 package config
 
 import (
@@ -27,7 +26,6 @@ type DatabaseConfig struct {
 }
 
 func Load() (*Config, error) {
-	// Load .env file if it exists
 	_ = godotenv.Load("../.env")
 
 	cfg := &Config{

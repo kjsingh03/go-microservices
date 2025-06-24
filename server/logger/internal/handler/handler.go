@@ -1,4 +1,3 @@
-// internal/handler/handler.go
 package handlers
 
 import (
@@ -228,7 +227,6 @@ func (h *LogHandler) DeleteLog(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *LogHandler) DropAllLogs(w http.ResponseWriter, r *http.Request) {
-	// Check for confirmation query parameter
 	if r.URL.Query().Get("confirm") != "true" {
 		payload := types.JsonResponse{
 			Success: false,

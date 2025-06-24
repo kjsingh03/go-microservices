@@ -65,7 +65,6 @@ func (s *LogService) UpdateLog(ctx context.Context, id string, req types.UpdateL
 		return nil, errors.New("log ID is required")
 	}
 
-	// Check if log exists
 	existingLog, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -74,7 +73,6 @@ func (s *LogService) UpdateLog(ctx context.Context, id string, req types.UpdateL
 		return nil, errors.New("log not found")
 	}
 
-	// Update fields if provided
 	updatedLog := &types.Log{
 		ID:        existingLog.ID,
 		Name:      existingLog.Name,
@@ -102,7 +100,6 @@ func (s *LogService) DeleteLog(ctx context.Context, id string) error {
 		return errors.New("log ID is required")
 	}
 
-	// Check if log exists
 	existingLog, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err

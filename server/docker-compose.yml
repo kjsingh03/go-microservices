@@ -19,31 +19,29 @@ services:
       - BROKER_PORT=${BROKER_PORT}
     networks:
       - go_microservices
-  # mail:
-  #   build: ./cmd/api/mail
-  #   ports:
-  #     - "${MAIL_PORT}:${MAIL_PORT}"
-  #   networks:
-  #     - go_microservices
+  
+  logger:
+    build: ./logger
+    ports: 
+      - "${LOGGER_PORT}:${LOGGER_PORT}"
+    environment:
+      - LOGGER_PORT=${LOGGER_PORT}
+      - MONGO_URL=${MONGO_URL}
+    networks:
+      - go_microservices
 
-  # listener:
-  #   build: ./cmd/api/listener
-  #   ports:
-  #     - "${LISTENER_PORT}:${LISTENER_PORT}"
-  #   environment:
-  #     - RABBITMQ_URL=${RABBITMQ_URL}
-  #   networks:
-  #     - go_microservices
-  #   depends_on:
-  #     - rabbitmq
-
-  # rabbitmq:
-  #   image: "rabbitmq:management"
-  #   ports:
-  #     - "15672:15672" # Management UI
-  #     - "5672:5672"   # AMQP protocol
-  #   networks:
-  #     - go_microservices
+  mail:
+    build: ./mailer
+    ports:
+      - "${MAILER_PORT}:${MAILER_PORT}"
+    environment:
+      - MAILER_PORT=${MAILER_PORT}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - FROM_ADDRESS=${FROM_ADDRESS}
+      - FROM_NAME=${FROM_NAME}
 
 networks:
   go_microservices:

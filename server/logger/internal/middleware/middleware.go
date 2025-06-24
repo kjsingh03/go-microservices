@@ -1,4 +1,3 @@
-// internal/middleware/middleware.go
 package middleware
 
 import (
@@ -12,7 +11,7 @@ import (
 
 func CORS() func(http.Handler) http.Handler {
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"}, // Configure appropriately for production
+		AllowedOrigins:   []string{"*"},  
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: true,
@@ -26,7 +25,6 @@ func Logging() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			
-			// Create a custom response writer to capture status code
 			wrapped := &responseWriter{ResponseWriter: w, statusCode: 200}
 			
 			next.ServeHTTP(wrapped, r)

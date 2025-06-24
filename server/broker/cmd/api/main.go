@@ -23,7 +23,7 @@ func main() {
 
 	app := Config{}
 
-	log.Printf("Server is starting at: http://localhost:%s", BROKER_PORT)
+	log.Printf("Broker Service starting at: http://localhost:%s", BROKER_PORT)
 
 	srv := http.Server{
 		Addr:    fmt.Sprintf(":%s", BROKER_PORT),

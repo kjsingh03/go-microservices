@@ -69,7 +69,8 @@ func startServer(cfg *config.Config, app *router.App) error {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Server starting on port %s", cfg.Server.Port)
+		log.Printf("Logger Service starting at: http://localhost:%s", cfg.Server.Port)
+		log.Println("Connected to MongoDB successfully")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed to start: %v", err)
 		}

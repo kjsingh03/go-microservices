@@ -56,26 +56,20 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a User instance to access methods
 	var u model.User
 	
-	// Get user by email
 	user, err := u.GetByEmail(payload.Email)
 
-	log.Println(user)
 	if err != nil {
 		utils.ErrorJSON(w, err, http.StatusUnauthorized)
 		return
 	}
 
-	// Check password
 	match, err := user.PasswordMatches(payload.Password)
 	if err != nil || !match {
 		utils.ErrorJSON(w, err, http.StatusUnauthorized)
 		return
 	}
-
-	// TODO: Generate JWT token here
 
 	utils.WriteJSON(w, http.StatusOK, map[string]any{
 		"success": true,

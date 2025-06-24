@@ -5,7 +5,3 @@ type JsonResponse struct {
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
 }
-
-// type AppConfig struct {
-// 	Models model.Models
-// }

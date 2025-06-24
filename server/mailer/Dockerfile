@@ -8,12 +8,12 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o logger ./cmd/api
+RUN go build -o mailer ./cmd/api
 
 FROM alpine:latest
 
-COPY --from=builder /app/logger .
+WORKDIR /root
 
-EXPOSE 8085
+COPY --from=builder /app/mailer .
 
-CMD ["./logger"]
+CMD ["./mailer"]
