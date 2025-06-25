@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -60,7 +59,7 @@ func initializeApp(dbManager *database.Manager) (*router.App, error) {
 
 func startServer(cfg *config.Config, app *router.App) error {
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
+		Addr:         ":"+cfg.Server.Port,
 		Handler:      app.Routes(),
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,

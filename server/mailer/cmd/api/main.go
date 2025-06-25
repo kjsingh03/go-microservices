@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+		"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,7 +27,7 @@ func main() {
 	routes := router.Routes(h)
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
+		Addr:         ":"+cfg.Server.Port,
 		Handler:      routes,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,

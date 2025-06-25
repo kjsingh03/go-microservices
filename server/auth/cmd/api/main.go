@@ -5,7 +5,6 @@ import (
 	"authentication/internal/db"
 	"authentication/internal/model"
 	"authentication/internal/router"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -15,14 +14,14 @@ import (
 func main() {
 	config.LoadEnv()
 
-	AUTH_PORT := config.GetPort("AUTH_PORT", "8081")
-
 	dbpool, err := db.ConnectToDB()
+
+	AUTH_PORT := config.GetPort("AUTH_PORT", "80")
 
 	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)
 	}
-	
+
 	defer dbpool.Close()
 
 	model.SetDB(dbpool)
@@ -30,7 +29,7 @@ func main() {
 	log.Printf("Auth Service starting at: http://localhost:%s", AUTH_PORT)
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", AUTH_PORT),
+		Addr:    ":" + AUTH_PORT,
 		Handler: router.Routes(),
 	}
 
